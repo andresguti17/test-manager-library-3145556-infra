@@ -1,50 +1,36 @@
 # test-manager-library-3145556-infra
 
-> **Prueba técnica · Ficha ADSO 3145556**
-> Entrega: **martes 13 de octubre de 2026, a las 5:00 p. m.** (17:00, hora Colombia).
+Containers, network, volumes, and the empty database engine for *Manager Library* (T-20).
 
-Este repositorio es la **infraestructura** de *Manager Library*: contenedores, red, volúmenes y el motor de base de datos vacío. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
+## Up
 
-## Instrucciones
+```powershell
+Copy-Item .env.example .env   # fill in JWT_SECRET and ADMIN_PASSWORD first
+docker compose up -d --build
+```
 
-Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto
-con el spec planteado**.
+The database starts **empty**: no tables until the api runs its migrations
+(ADR-001 — the schema belongs to the application migrations). This repo
+contains no `CREATE TABLE` by design; verification:
 
-1. Hacer fork, a su cuenta de GitHub, de cada repositorio de la tabla del final.
-2. Leer el spec en [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs).
-   Se entrega en dos versiones: `spec-python/` y `spec-.net/`.
-3. Desarrollar en los forks.
+```powershell
+docker compose exec db psql -U library -d library -c "\dt library.*"
+# Did not find any relation — expected before migrations
+```
 
-## El reto se desarrolla con React y PHP (Laravel)
+## Services
 
-El spec está escrito para Python y para .NET, pero el reto **no** se hace en esos lenguajes:
+| Service | Image / build | Port |
+|---|---|---|
+| `db` | `postgres:16`, UTC, volume `pgdata` | 5432 |
+| `api` | `../api` (Laravel), volume `covers` at `/var/covers` | 8000 |
+| `app` | `../app` (React) | 5173 |
 
-| Capa | Tecnología del reto |
-|---|---|
-| Frontend | React |
-| Backend | PHP con Laravel |
+Single network `library-net`. `api` waits for `db` to be healthy; `app` waits for `api`.
 
-Lo que el spec define sobre el negocio —historias, criterios de aceptación, reglas, contrato de la
-API, modelo de datos— se respeta. Lo que define sobre la tecnología se traduce a React y Laravel.
+## Down
 
-## La prueba no consiste en escribir el código
-
-El propósito principal es ver la **capacidad de desempeño con SDD** (*Spec-Driven Development*,
-desarrollo guiado por especificación): cómo se lee, se interpreta y se aplica una especificación
-para llevarla a un stack distinto. El código es el medio, no el fin.
-
-## Entrega
-
-Cuenta lo que quede **subido a los forks antes de las 5:00 p. m.** (17:00). Lo que llegue después no se revisa.
-No hay prórroga: suban avances parciales con commits pequeños durante la prueba.
-
-## Los seis repositorios
-
-| Repositorio | Qué va ahí |
-|---|---|
-| [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs) | El spec: `spec-python/` y `spec-.net/` |
-| [`test-manager-library-3145556-api`](https://github.com/code-sena/test-manager-library-3145556-api) | Backend en PHP (Laravel) |
-| [`test-manager-library-3145556-app`](https://github.com/code-sena/test-manager-library-3145556-app) | Frontend en React |
-| [`test-manager-library-3145556-page`](https://github.com/code-sena/test-manager-library-3145556-page) | Sitio público estático de presentación |
-| [`test-manager-library-3145556-infra`](https://github.com/code-sena/test-manager-library-3145556-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
-| [`test-manager-library-3145556-tool`](https://github.com/code-sena/test-manager-library-3145556-tool) | Utilidades: sembrador de datos de demostración |
+```powershell
+docker compose down        # keep data
+docker compose down -v     # wipe data (fresh engine)
+```

@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library
+      POSTGRES_DB: library
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - library-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library -d library"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ../api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://library:library@db:5432/library
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?set ADMIN_USERNAME in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      COVERS_DIR: /var/covers
+      CORS_ORIGIN: http://localhost:5173
+    volumes:
+      - covers:/var/covers
+    ports:
+      - "8000:8000"
+    networks:
+      - library-net
+
+  app:
+    build: ../app
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    networks:
+      - library-net
+
+networks:
+  library-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  covers:
